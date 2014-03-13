@@ -1,8 +1,5 @@
-
 AM_CPPFLAGS=\
 	-I$(top_srcdir) \
-	-I$(top_srcdir)/oRTP/include \
-	-I$(top_srcdir)/mediastreamer2/include \
 	-I$(top_srcdir)/coreapi \
 	-I$(top_srcdir)/include 
 
@@ -14,11 +11,8 @@ COMMON_CFLAGS=\
 	$(MEDIASTREAMER_CFLAGS) \
 	$(READLINE_CFLAGS) 
 
-
 if BUILD_DIALER
 bin_PROGRAMS=dialer
-
-
 
 dialer_includedir=$(includedir)/linphone
 

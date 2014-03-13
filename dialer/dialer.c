@@ -19,10 +19,7 @@
  *  */
 
 #include <linphonecore.h>
-//#include "linphonec.h"
-//#include <sipsetup.h>
 #include "lpconfig.h"
-//#include "private.h"
 #include <ortp/event.h>
 #include <ortp/b64.h>
 #include <math.h>
