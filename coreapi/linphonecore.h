@@ -2082,6 +2082,8 @@ void linphone_core_show_video(LinphoneCore *lc, bool_t show);
 /*play/record support: use files instead of soundcard*/
 void linphone_core_use_files(LinphoneCore *lc, bool_t yesno);
 LINPHONE_PUBLIC void linphone_core_set_play_file(LinphoneCore *lc, const char *file);
+LINPHONE_PUBLIC void linphone_core_set_play_file_with_cb(LinphoneCore *lc, const char *file,MSFilterNotifyFunc cb);
+
 LINPHONE_PUBLIC void linphone_core_set_record_file(LinphoneCore *lc, const char *file);
 
 LINPHONE_PUBLIC void linphone_core_play_dtmf(LinphoneCore *lc, char dtmf, int duration_ms);

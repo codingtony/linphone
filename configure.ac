@@ -225,6 +225,17 @@ AC_ARG_ENABLE(console_ui,
 	[console_ui=true]
 )
 
+dnl conditionnal build of dialer tool.
+AC_ARG_ENABLE(dialer,
+	[AS_HELP_STRING([--enable-dialer=[yes/no]], [Turn on or off compilation of dialer tool (default=yes)])],
+	[case "${enableval}" in
+		yes)	dialer=true ;;
+		no)	dialer=false ;;
+		*)	AC_MSG_ERROR(bad value ${enableval} for --enable-dialer) ;;
+	esac],
+	[dialer=true]
+)
+
 dnl conditionnal build of tools.
 AC_ARG_ENABLE(tools,
 	[AS_HELP_STRING([--enable-tools=[yes/no]], [Turn on or off compilation of console interface (default=yes)])],
@@ -589,6 +600,13 @@ AC_ARG_ENABLE(zrtp,
 dnl build console if required
 AM_CONDITIONAL(BUILD_CONSOLE, test x$console_ui = xtrue)
 
+dnl build dialer if required
+AM_CONDITIONAL(BUILD_DIALER, test x$dialer = xtrue)
+if test "$dialer" != "false" ; then
+	AC_DEFINE(BUILD_DIALER, 1, [Define if dialer is enabled])
+fi
+
+
 dnl special things for arm-linux cross compilation toolchain
 AM_CONDITIONAL(ARMBUILD, test x$use_arm_toolchain = xyes)
 
@@ -902,6 +920,7 @@ AC_CONFIG_FILES([
 	share/linphone.desktop
 	scripts/Makefile
 	tools/Makefile
+	dialer/Makefile
 	linphone.spec
 	linphone.iss
 ])
@@ -914,6 +933,7 @@ printf "* %-30s %s\n" "Video support"		$video
 printf "* %-30s %s\n" "GTK interface"		$gtk_ui
 printf "* %-30s %s\n" "Account assistant"	$build_wizard
 printf "* %-30s %s\n" "Console interface"	$console_ui
+printf "* %-30s %s\n" "Dialer"			$dialer
 printf "* %-30s %s\n" "Tools"			$build_tools
 printf "* %-30s %s\n" "Message storage"		$enable_msg_storage
 printf "* %-30s %s\n" "zRTP encryption (GPLv3)"	$zrtp
