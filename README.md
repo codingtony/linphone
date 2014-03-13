@@ -23,7 +23,7 @@ git tag -a 3.7.0 HEAD -m "3.7.0"
 cd $LINPATH/antlr3/runtime/C/dist/
 tar xvzf libantlr3c-3.4-beta3.tar.gz
 cd libantlr3c-3.4-beta3
-./configure  --prefix=$LINPATH/install   --enable-shared=false --enable-static=true  && make & make install
+./configure  --prefix=$LINPATH/install   --enable-shared=false --enable-static=true  && make && make install
 
 #cd $LINPATH/oRTP
 #./autogen.sh && ./configure  LDFLAGS="-static" --prefix=$LINPATH/install   --enable-shared=false --enable-static=true& & make && make install
