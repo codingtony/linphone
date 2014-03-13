@@ -23,6 +23,7 @@ export PKG_CONFIG_PATH=$LINPATH/install/lib/pkgconfig/
 git tag -a 3.7.0 HEAD -m "3.7.0"
 cd $LINPATH/antlr3/runtime/C/
 ./autogen.sh && ./configure  --prefix=$LINPATH/install  --disable-shared --enable-64bit --with-pic  --enable-static=true  && make && make install
+mkdir -p $LINPATH/install/share/java/
 ln -s $LINPATH/antlr3/antlr-3.4-complete.jar $LINPATH/install/share/java/antlr.jar
 
 cd $LINPATH/belle-sip
