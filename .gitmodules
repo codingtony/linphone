@@ -4,3 +4,12 @@
 [submodule "mediastreamer2"]
 	path = mediastreamer2
 	url = git://git.linphone.org/mediastreamer2.git
+[submodule "osip"]
+	path = osip
+	url = git://git.savannah.gnu.org/osip.git
+[submodule "exosip"]
+	path = exosip
+	url = git://git.savannah.nongnu.org/exosip.git
+[submodule "libspeex"]
+	path = libspeex
+	url = http://git.xiph.org/speex.git/

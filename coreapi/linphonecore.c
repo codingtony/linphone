@@ -4867,6 +4867,23 @@ void linphone_core_use_files(LinphoneCore *lc, bool_t yesno){
  *
  * The file must be a 16 bit linear wav file.
 **/
+void linphone_core_set_play_file_with_cb(LinphoneCore *lc, const char *file, MSFilterNotifyFunc cb){
+        LinphoneCall *call=linphone_core_get_current_call(lc);
+        if (lc->play_file!=NULL){
+                ms_free(lc->play_file);
+                lc->play_file=NULL;
+        }
+        if (file!=NULL) {
+                lc->play_file=ms_strdup(file);
+                if (call && call->audiostream && call->audiostream->ms.ticker)  {
+                        audio_stream_play(call->audiostream,file);
+                        if (cb != NULL)
+                                ms_filter_set_notify_callback(call->audiostream->soundread,cb,NULL);
+                }
+
+        }
+}
+
 void linphone_core_set_play_file(LinphoneCore *lc, const char *file){
 	LinphoneCall *call=linphone_core_get_current_call(lc);
 	if (lc->play_file!=NULL){
