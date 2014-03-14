@@ -19,26 +19,14 @@
  *  */
 
 #include <linphonecore.h>
-#include "lpconfig.h"
-#include <ortp/event.h>
-#include <ortp/b64.h>
-#include <math.h>
-
-#include "mediastreamer2/mediastream.h"
-#include "mediastreamer2/msvolume.h"
-#include "mediastreamer2/msequalizer.h"
-#include "mediastreamer2/msfileplayer.h"
-#include "mediastreamer2/msjpegwriter.h"
-#include "mediastreamer2/mseventqueue.h"
-#include "mediastreamer2/mssndcard.h"
-
-
-
-
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
 #include <signal.h>
 
 static bool_t running=TRUE;
+static int ringCount=0;
+static int maxRingCount=4;
 
 static void stop(int signum){
         running=FALSE;
@@ -56,10 +44,15 @@ static void play_finished() {
 static void call_state_changed(LinphoneCore *lc, LinphoneCall *call, LinphoneCallState cstate, const char *msg){
         switch(cstate){
                 case LinphoneCallOutgoingRinging:
+//			ringCount++;
                         printf("It is now ringing remotely !\n");
+			if (ringCount >= maxRingCount) {
+                        	printf("It is now ringing remotely !\n");
+                		//linphone_core_terminate_call(lc,call);
+			}
                 break;
                 case LinphoneCallOutgoingEarlyMedia:
-                        printf("Receiving some early media\n");
+                        printf("Receiving some early media \n");
                 break;
                 case LinphoneCallConnected:
                         printf("We are connected !\n");
@@ -67,7 +60,6 @@ static void call_state_changed(LinphoneCore *lc, LinphoneCall *call, LinphoneCal
                 case LinphoneCallStreamsRunning:
                         printf("Media streams established !\n");
 			linphone_core_set_play_file_with_cb(lc,wav,play_finished);
-		//	ms_filter_set_notify_callback(call->audiostream->soundread,play_finished,NULL);
                 break;
                 case LinphoneCallEnd:
                         printf("Call is terminated.\n");
@@ -85,27 +77,63 @@ int main(int argc, char *argv[]){
         LinphoneCoreVTable vtable={0};
         LinphoneCore *lc;
         LinphoneCall *call=NULL;
+	LinphoneCallParams *callParam=NULL;
         const char *dest=NULL;
         const char *conf=NULL;
+	int c;
+ 	static struct option long_options[] = {
+		{"conf",required_argument,0,'c'},
+		{"number",required_argument,0,'n'},
+		{"ring",required_argument,0,'r'},
+		{"file",required_argument,0,'f'},
+	 	{NULL, 0, 0, 0}
+	};
 
-        /* take the destination sip uri from the command line arguments */
-        if (argc<3){
-		return  2;
-        }
-	conf=argv[1];
-	dest=argv[2];
-	wav=argv[3];
-
+	int option_index=0;
+	while (1) {
+		c = getopt_long (argc,argv,"c:n:r:f:",long_options,&option_index);
+	
+		if (c == -1)	{
+			break;
+		}
+		switch (c) {
+			case 'c':
+				conf = optarg;
+			break;
+			case 'n':
+				dest = optarg;
+			break;
+			case 'f':
+				wav  = optarg;
+			break;
+			case 'r':
+				maxRingCount = strtol(optarg, 0,10);
+			break;
+			default:
+				return 2;
+			break;
+				
+		}
+	}
+	if (conf == NULL || dest == NULL || wav == NULL) {
+		printf("Missing arguments!\n");
+		return 2;
+	}
+	printf("Calling %s\n",dest);
+	printf("Using %s for configuration\n",conf);
+	printf("Will stop after %d ring\n",maxRingCount);
+	printf("Will play %s on answer\n", wav);
+	
         signal(SIGINT,stop);
-
         vtable.call_state_changed=call_state_changed;
-//	vtable.dtmf_received=linphonec_dtmf_received;
-
 
         lc=linphone_core_new(&vtable,conf,NULL,NULL);
 	linphone_core_use_files(lc,TRUE);
+	linphone_core_set_remote_ringback_tone(lc,NULL);
+	callParam=linphone_core_create_default_call_parameters(lc);
+	linphone_call_params_enable_early_media_sending(callParam,FALSE);
         if (dest){
-                call=linphone_core_invite(lc,dest);
+                call=linphone_core_invite_with_params(lc,dest,callParam);
                 if (call==NULL){
                         printf("Could not place call to %s\n",dest);
                         goto end;
