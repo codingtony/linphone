@@ -23,18 +23,26 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <signal.h>
+#include <time.h>
+
+
+
 
 static bool_t running=TRUE;
 static int ringCount=0;
-static int maxRingCount=4;
+static int maxRingCount=3;
+static int expectedDtmf=0;
+static bool_t ringing=FALSE;
+static bool_t confirmWithDtmf=FALSE;
+static bool_t gotSomeone=FALSE;
+static clock_t startRingingClock = NULL;
+const char *wav=NULL;
 
 static void stop(int signum){
         running=FALSE;
 }
-const char *wav=NULL;
 
 static void play_finished() {
-	printf("Play finished !\n");
 	running=FALSE;
 }
 
@@ -43,46 +51,58 @@ static void play_finished() {
  *   */
 static void call_state_changed(LinphoneCore *lc, LinphoneCall *call, LinphoneCallState cstate, const char *msg){
         switch(cstate){
-                case LinphoneCallOutgoingRinging:
-//			ringCount++;
-                        printf("It is now ringing remotely !\n");
-			if (ringCount >= maxRingCount) {
-                        	printf("It is now ringing remotely !\n");
-                		//linphone_core_terminate_call(lc,call);
-			}
-                break;
-                case LinphoneCallOutgoingEarlyMedia:
-                        printf("Receiving some early media \n");
-                break;
+                case LinphoneCallError:
                 case LinphoneCallConnected:
-                        printf("We are connected !\n");
+		case LinphoneCallOutgoingInit:
+		case LinphoneCallOutgoingProgress:
+                break;
+                case LinphoneCallOutgoingRinging:
+                case LinphoneCallOutgoingEarlyMedia:
+			printf("Ringing\n");
+			ringing=TRUE;
+			startRingingClock=clock();
                 break;
                 case LinphoneCallStreamsRunning:
-                        printf("Media streams established !\n");
+			ringing=FALSE;
+			printf("Start LinphoneCallStreamsRunning\n");
 			linphone_core_set_play_file_with_cb(lc,wav,play_finished);
+			if (!confirmWithDtmf) {
+			  gotSomeone=TRUE;
+			}
+			printf("End LinphoneCallStreamsRunning\n");
                 break;
                 case LinphoneCallEnd:
-                        printf("Call is terminated.\n");
 			running=FALSE;
-                break;
-                case LinphoneCallError:
-                        printf("Call failure !");
                 break;
                 default:
                         printf("Unhandled notification %i\n",cstate);
         }
 }
 
+static void dtmf_received(LinphoneCore *lc, LinphoneCall *call, int dtmf){
+	printf("DTMF %i\n",dtmf);
+	if (!gotSomeone && confirmWithDtmf) {
+	  printf("Expected DTMF %i\n",expectedDtmf);
+	  if (expectedDtmf == dtmf) {
+	      gotSomeone=TRUE;
+	      running=FALSE;
+	  }
+	}
+}
+
 int main(int argc, char *argv[]){
+	ortp_set_log_level_mask(ORTP_FATAL);
         LinphoneCoreVTable vtable={0};
         LinphoneCore *lc;
         LinphoneCall *call=NULL;
 	LinphoneCallParams *callParam=NULL;
         const char *dest=NULL;
         const char *conf=NULL;
+	
 	int c;
  	static struct option long_options[] = {
 		{"conf",required_argument,0,'c'},
+		{"confirm",required_argument,0,'d'},
 		{"number",required_argument,0,'n'},
 		{"ring",required_argument,0,'r'},
 		{"file",required_argument,0,'f'},
@@ -100,6 +120,11 @@ int main(int argc, char *argv[]){
 			case 'c':
 				conf = optarg;
 			break;
+			case 'd':
+				expectedDtmf = strtol(optarg, 0,10);
+				expectedDtmf  = expectedDtmf + '0';
+				confirmWithDtmf=TRUE;
+			break;
 			case 'n':
 				dest = optarg;
 			break;
@@ -116,7 +141,14 @@ int main(int argc, char *argv[]){
 		}
 	}
 	if (conf == NULL || dest == NULL || wav == NULL) {
-		printf("Missing arguments!\n");
+		printf("Dialer 0.1 by Tony Bussieres (tony@codingtony.com)\n");
+		printf("==================================================\n");
+		printf("Arguments :\n");
+		printf("--conf : configuration file (required)\n");
+		printf("--number : outgoing number to call (required)\n");
+		printf("--file : wave file to play (required)\n");
+		printf("--confirm : if the dtmf in parameter is sent, terminate the call and exit 0, otherwise exit 1\n");
+		printf("--ring : number of ring to wait before hangup.\n");
 		return 2;
 	}
 	printf("Calling %s\n",dest);
@@ -126,30 +158,42 @@ int main(int argc, char *argv[]){
 	
         signal(SIGINT,stop);
         vtable.call_state_changed=call_state_changed;
+	vtable.dtmf_received=dtmf_received;
 
         lc=linphone_core_new(&vtable,conf,NULL,NULL);
 	linphone_core_use_files(lc,TRUE);
-	linphone_core_set_remote_ringback_tone(lc,NULL);
+	//linphone_core_set_remote_ringback_tone(lc,NULL);
 	callParam=linphone_core_create_default_call_parameters(lc);
-	linphone_call_params_enable_early_media_sending(callParam,FALSE);
+	//linphone_call_params_enable_early_media_sending(callParam,FALSE);
         if (dest){
                 call=linphone_core_invite_with_params(lc,dest,callParam);
                 if (call==NULL){
                         printf("Could not place call to %s\n",dest);
                         goto end;
-                }else printf("Call to %s is in progress...",dest);
+                } else {
+		  printf("Call to %s is in progress...\n",dest);
+		}
                 linphone_call_ref(call);
         }
         /* main loop for receiving notifications and doing background linphonecore work: */
+	long sleep=0;
         while(running){
-                linphone_core_iterate(lc);
-                ms_usleep(50000);
+		if (ringing) {
+		  sleep += 1;
+		  if ((sleep % 200) == 0) {
+		    ringCount++;
+		    if (ringCount > maxRingCount) {
+		      running=FALSE;
+		    }
+		  }
+		}
+		linphone_core_iterate(lc);
+                ms_usleep(10000);
+		
         }
         if (call && linphone_call_get_state(call)!=LinphoneCallEnd){
-                /* terminate the call */
                 printf("Terminating the call...\n");
                 linphone_core_terminate_call(lc,call);
-                /*at this stage we don't need the call object */
                 linphone_call_unref(call);
         }
 
@@ -157,5 +201,8 @@ end:
         printf("Shutting down...\n");
         linphone_core_destroy(lc);
         printf("Exited\n");
-        return 0;
+	if (gotSomeone) {
+	    return 0;
+	}
+        return 1;
 }
