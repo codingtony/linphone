@@ -1912,7 +1912,9 @@ void linphone_call_stop_video_stream(LinphoneCall *call) {
 void linphone_call_stop_media_streams(LinphoneCall *call){
 	linphone_call_stop_audio_stream(call);
 	linphone_call_stop_video_stream(call);
-	ms_event_queue_skip(call->core->msevq);
+	if (call->core->msevq) {
+		ms_event_queue_skip(call->core->msevq);
+	}
 	
 	if (call->audio_profile){
 		rtp_profile_clear_all(call->audio_profile);
